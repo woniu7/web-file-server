@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1.0 minimum-scale=1.0 maximum-scale=1.0" >
+<meta name="theme-color" content="#294172">
+<title>Upload Files</title>
+<style>
+@font-face {
+	font-family: noto;
+	src:url('/fonts/NotoSerif.ttf');
+}
+
+.loading{ 
+	background:rgb(185, 31, 31); 
+	border-radius: 1px;
+	height:2px; 
+	position:fixed; 
+	top:0; 
+	z-index:99999; 
+	box-shadow: 0 0 5px #ffffff;
+}
+
+html, body, form {
+	height: 100%;
+	margin: 0px;
+	text-align: center;
+}
+
+form {
+	float: left;
+	width: 100%;
+	overflow-x: hidden;
+}
+input {
+	left: 0;
+	top: 0;
+	opacity: 0;
+	filter: alpha(opacity=0);
+	cursor: pointer;
+	position: absolute;
+	display: block;
+	height: 100%;
+	width: 100%;
+}
+
+#fileName input {
+	position: relative;
+	display: inline-block;
+	opacity: 1;
+	cursor: auto;	
+	width: auto;
+}
+
+h1 {
+	font-family: noto;
+	position: relative;
+	float: left;
+	top: 0;
+	left: 0;
+	color: #06406c;
+	margin: 0;
+	width: 100%;
+}
+
+h1.select {
+	background-color: #348fd4;
+}
+
+.fileInfo {
+	background-color: #06406c;
+	color: white;
+	position: relative;
+	width: 100%;	
+	float: left;
+	margin: 0;
+}
+
+h1.upload {
+	background-color: #ffffff;
+	color: black;
+}
+
+#progress { 
+	background: blue; 
+	border-radius: 1px;
+	height:2px; 
+	position:fixed; 
+	bottom:0; 
+	z-index:99999; 
+	box-shadow: 0 0 5px #000000;
+	width: 0;
+}
+
+img {
+	max-width: 100%;
+	padding: 0 0 20px 0;
+}
+</style>
+</head>
+
+<body>
+<div class="loading"></div>
+
+<form tabIndex="-1" id="form1" enctype="multipart/form-data" method="post" >
+	<input type="text" style="display: none" readonly />
+<h1 class="select">
+<input tabIndex="1" type="file" name="fileToUpload" id="fileToUpload" onchange="fileSelected();">
+<i id="selectLabel"> Select File </i>
+</h1>
+<div id="fileInfo" class="fileInfo">
+<div style="display: inline-block; margin:0 auto; padding: 20px">
+	<img></img>
+	<p id="fileName"></p>
+	<p id="fileSize"></p>
+	<p id="fileType"></p>
+</div>
+</div>
+<div id="progress"></div>
+<h1 class="upload">
+<input id="upload" type="button" onclick="uploadFileClick();" value="Upload" />
+<i id="uploadLabel"> Upload <span id="progressNumber"></span></i>
+</h1>
+</form>
+
+<script src="/jquery-3.1.1.min.js"></script>
+<script type="text/javascript">
+$('.loading').animate({'width': '60%'}, 500);
+function fileSelected() {
+	var file = document.getElementById('fileToUpload').files[0];
+	if (file) {
+		var fileSize = 0;
+		if (file.size > 1024 * 1024)
+		fileSize = (Math.round(file.size * 100 / (1024 * 1024)) / 100).toString() + 'MB';
+		else
+		fileSize = (Math.round(file.size * 100 / 1024) / 100).toString() + 'KB';
+
+		document.getElementById('fileName').innerHTML = 
+			'Name: <input  onkeypress="if (13 == event.keyCode) { uploadFileClick(); }" id="fileNewName" type="text" value="' + file.name + '" />';
+		document.getElementById('fileSize').innerHTML = 
+			'Size: ' + fileSize;
+		document.getElementById('fileType').innerHTML = 
+			'Type: ' + file.type;
+		if (/image.*/.test(file.type)) {
+			var imgShowSrc = null;
+			if (window.createObjectURL != undefined) { // basic
+				imgShowSrc = window.createObjectURL(file);
+			} else if (window.URL != undefined) { // mozilla(firefox)
+				imgShowSrc = window.URL.createObjectURL(file);
+			} else if (window.webkitURL != undefined) { // webkit or chrome
+				imgShowSrc = window.webkitURL.createObjectURL(file);
+			}
+			var imgShow = document.getElementsByTagName("img")[0];
+			imgShow.src = imgShowSrc;
+			imgShow.style.float = "left";
+			imgShow.style.margin = "0 auto";
+			imgShow.style.height = fileinfo.getElementsByTagName("div")[0].offsetHeight;
+		} 
+	}
+	resize();
+	document.getElementById('progressNumber').innerHTML = "";
+	document.getElementById("progress").style.width = "0px";
+}
+
+function uploadFile(filename) {
+	var file = 
+		document.getElementById("fileToUpload").files[0];
+	var fd = new FormData();
+	fd.append("fileToUpload", file);
+	fd.append("filename", filename);
+
+	var xhr;
+	if (window.XMLHttpRequest) {
+		xhr = new XMLHttpRequest();
+	} else {
+		// code for IE6, IE5
+		xhr = new ActiveXObject("Microsoft.XMLHTTP");
+	}
+
+	xhr.upload.addEventListener("progress", uploadProgress, false);
+	xhr.addEventListener("load", uploadComplete, false);
+	xhr.addEventListener("error", uploadFailed, false);
+	xhr.addEventListener("abort", uploadCanceled, false);
+	xhr.open("POST", "upload.php");
+	xhr.send(fd);
+}
+
+function uploadFileClick () {
+	// No select
+	try {
+		var filename = 
+			document.getElementById("fileNewName").value;
+	} catch(err) {
+		alert("No select file");
+		return ;
+	}
+	if ("" === filename) {
+		alert("No file name set");
+		return ;
+	}
+
+	uploadFile(filename);
+//	var xhttp;
+//	if (window.XMLHttpRequest) {
+//		xhttp = new XMLHttpRequest();
+//	} else {
+//		// code for IE6, IE5
+//		xhttp = new ActiveXObject("Microsoft.XMLHTTP");
+//	}
+//	xhttp.onreadystatechange = function() {
+//		if (this.readyState == 4 && this.status == 200) {
+//			if ("OK" === this.responseText) {
+//				uploadFile(filename);
+//			} else {
+//				alert(this.responseText);
+//			}
+//		}
+//	};
+//	xhttp.open("GET", "checkFileExist.php?t=" + Math.random() +
+//			"&filename=" + filename, true);
+//	xhttp.send();
+}
+
+function uploadProgress(evt) {
+	if (evt.lengthComputable) {
+		var percentComplete = Math.round(evt.loaded * 100 / evt.total);
+		complete = percentComplete.toString() + '%'
+		document.getElementById('progressNumber').innerHTML = complete;
+		//document.getElementById('progress').style.width = complete;
+		$('#progress').animate({'width': complete}, 50);
+	}
+	else {
+		document.getElementById('progressNumber').innerHTML = 'unable to compute';
+	}
+}
+
+function uploadComplete(evt) {
+	/* This event is raised when the server send back a response */
+	var re = evt.target.responseText;
+	if ("" != re) {
+		alert(evt.target.responseText);
+	} else {
+		document.getElementById('progressNumber').innerHTML = "Complete!";
+	}
+}
+
+function uploadFailed(evt) {
+	alert("There was an error attempting to upload the file.");
+}
+
+function uploadCanceled(evt) {
+	alert("The upload has been canceled by the user or the browser dropped the connection.");
+}
+
+function resize() {
+	var bodyHeight = window.innerHeight;
+	var bodyWidth = window.innerWidth;
+	var select = document.getElementsByClassName("select")[0];
+	select.style.padding = (0.25 * bodyHeight - select.getElementsByTagName("i")[0].offsetHeight) / 2 + "px 0px";
+	var fileInfo = document.getElementsByClassName("fileInfo")[0];
+	var infodiv = fileInfo.getElementsByTagName("div")[0];
+	fileInfo.style.padding = (0.5 * bodyHeight - infodiv.clientHeight) / 2 + "px 0px";
+	var upload = document.getElementsByClassName("upload")[0];
+	upload.style.padding = (0.25 * bodyHeight - upload.getElementsByTagName("i")[0].offsetHeight) / 2 + "px 0px";
+	/*
+	var beyond = fileInfo.scrollWidth - bodyWidth;
+	if ( beyond > bodyWidth * 0.2) {
+		fileInfo.style.fontSize = "80%";
+	}
+	*/
+}
+
+function continueRun() {
+	$('.loading').animate({'width': '80%'}, 50);
+	resize();
+	document.getElementById("fileToUpload").onfocus = function () {
+		document.getElementById("selectLabel").style.textDecoration = "underline";
+	}	
+	$("#fileToUpload").blur(function () {
+		$("#selectLabel").css("text-decoration", "none");
+	});
+	document.getElementById("upload").onfocus = function () {
+		document.getElementById("uploadLabel").style.textDecoration = "underline";
+	}
+	$("#upload").blur(function () {
+		$("#uploadLabel").css("text-decoration", "none");
+	});
+	$('.loading').animate({'width': '100%'}, 50);
+	$('.loading').fadeOut();
+}
+document.body.onload = function () {
+//	document.fonts.ready.then(function() { continueRun(); }, function() { continueRun(); });
+	continueRun();
+}
+</script>
+</body>
+</html>
